@@ -1,0 +1,408 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum QuestionStatus {
+  DRAFT
+  REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum DifficultyName {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum QuizType {
+  SOLO
+  MULTIPLAYER
+}
+
+enum QuizStatus {
+  ACTIVE
+  COMPLETED
+  ABANDONED
+}
+
+enum RoomStatus {
+  WAITING
+  ACTIVE
+  FINISHED
+}
+
+enum ChallengeType {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+model User {
+  id                String      @id @default(uuid())
+  username          String      @unique
+  passwordHash      String
+  age               Int
+  ageGroupId        String?
+  ageGroup          AgeGroup    @relation(fields: [ageGroupId], references: [id])
+  role              Role        @default(USER)
+  avatarUrl         String?
+  email             String?     @unique
+  language          String      @default("ar")
+  theme             String      @default("light")
+  totalPoints       Int         @default(0)
+  totalXP           Int         @default(0)
+  level             Int         @default(1)
+  currentStreak     Int         @default(0)
+  longestStreak     Int         @default(0)
+  lastActivityDate  DateTime?
+  passwordResetToken String?
+  passwordResetExpires DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  answers           UserAnswer[]
+  results           QuizResult[]
+  badges            UserBadge[]
+  challengeProgress ChallengeProgress[]
+  participations    CompetitionParticipant[]
+  auditLogs         AuditLog[]
+
+  @@index([username])
+  @@index([email])
+}
+
+model AgeGroup {
+  id        String   @id @default(uuid())
+  name      String
+  minAge    Int
+  maxAge    Int
+  users     User[]
+  questions Question[]
+
+  @@index([minAge, maxAge])
+}
+
+model Category {
+  id          String     @id @default(uuid())
+  name        String
+  slug        String     @unique
+  description String?
+  parentId    String?
+  parent      Category?  @relation("CategoryChildren", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryChildren")
+  questions   Question[]
+
+  @@index([slug])
+  @@index([parentId])
+}
+
+model DifficultyLevel {
+  id             String   @id @default(uuid())
+  name           DifficultyName @unique
+  value          Int      @unique
+  xpMultiplier   Float    @default(1.0)
+  pointMultiplier Float   @default(1.0)
+  questions      Question[]
+
+  @@index([value])
+}
+
+model Question {
+  id            String          @id @default(uuid())
+  text          String
+  categoryId    String
+  category      Category        @relation(fields: [categoryId], references: [id])
+  ageGroupId    String
+  ageGroup      AgeGroup        @relation(fields: [ageGroupId], references: [id])
+  difficultyId  String
+  difficulty    DifficultyLevel @relation(fields: [difficultyId], references: [id])
+  correctAnswer String
+  explanation   String?
+  source        String?
+  status        QuestionStatus  @default(DRAFT)
+  isAiGenerated Boolean         @default(false)
+  createdBy     String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  options       QuestionOption[]
+  quizQuestions QuizQuestion[]
+  userAnswers   UserAnswer[]
+  reviews       QuestionReview[]
+
+  @@index([categoryId])
+  @@index([ageGroupId])
+  @@index([difficultyId])
+  @@index([status])
+}
+
+model QuestionOption {
+  id        String   @id @default(uuid())
+  questionId String
+  question  Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  text      String
+  isCorrect Boolean  @default(false)
+  order     Int      @default(0)
+
+  @@index([questionId])
+}
+
+model Quiz {
+  id            String      @id @default(uuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  type          QuizType    @default(SOLO)
+  categoryId    String?
+  category      Category?   @relation(fields: [categoryId], references: [id])
+  status        QuizStatus  @default(ACTIVE)
+  score         Int         @default(0)
+  correctAnswers Int        @default(0)
+  wrongAnswers  Int         @default(0)
+  totalQuestions Int        @default(0)
+  pointsEarned  Int         @default(0)
+  xpEarned      Int         @default(0)
+  startedAt     DateTime    @default(now())
+  completedAt   DateTime?
+
+  questions     QuizQuestion[]
+  results       QuizResult[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+}
+
+model QuizQuestion {
+  id        String   @id @default(uuid())
+  quizId    String
+  quiz      Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  questionId String
+  question  Question @relation(fields: [questionId], references: [id])
+  order     Int      @default(0)
+
+  @@unique([quizId, questionId])
+  @@index([quizId])
+}
+
+model QuizResult {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  quizId        String
+  quiz          Quiz     @relation(fields: [quizId], references: [id])
+  score         Int
+  totalQuestions Int
+  correctAnswers Int
+  wrongAnswers  Int
+  pointsEarned  Int
+  xpEarned      Int
+  completedAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([completedAt])
+}
+
+model Level {
+  id        String @id @default(uuid())
+  level     Int    @unique
+  minXP     Int
+  maxXP     Int
+  name      String?
+  users     User[]
+
+  @@index([level])
+}
+
+model XPTransaction {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  amount    Int
+  reason    String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model PointTransaction {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  amount    Int
+  reason    String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Badge {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  imageUrl    String?
+  criteria    Json
+  users       UserBadge[]
+
+  @@index([name])
+}
+
+model UserBadge {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  badgeId   String
+  badge     Badge    @relation(fields: [badgeId], references: [id])
+  earnedAt  DateTime @default(now())
+
+  @@unique([userId, badgeId])
+  @@index([userId])
+}
+
+model Achievement {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  criteria    Json
+  type        String
+}
+
+model Challenge {
+  id            String      @id @default(uuid())
+  title         String
+  description   String?
+  type          ChallengeType
+  categoryId    String?
+  category      Category?   @relation(fields: [categoryId], references: [id])
+  target        Int
+  rewardXp      Int         @default(0)
+  rewardPoints  Int         @default(0)
+  startDate     DateTime
+  endDate       DateTime
+  isActive      Boolean     @default(true)
+  progress      ChallengeProgress[]
+
+  @@index([type])
+  @@index([isActive])
+  @@index([startDate, endDate])
+}
+
+model ChallengeProgress {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  challengeId String
+  challenge Challenge @relation(fields: [challengeId], references: [id])
+  current   Int      @default(0)
+  completed Boolean  @default(false)
+  completedAt DateTime?
+
+  @@unique([userId, challengeId])
+  @@index([userId])
+  @@index([challengeId])
+}
+
+model LeaderboardSnapshot {
+  id            String   @id @default(uuid())
+  periodType    String
+  periodStart   DateTime
+  periodEnd     DateTime
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  score         Int
+  rank          Int
+  createdAt     DateTime @default(now())
+
+  @@index([periodType, periodStart, periodEnd])
+  @@index([userId])
+}
+
+model CompetitionRoom {
+  id                   String      @id @default(uuid())
+  code                 String      @unique
+  hostId               String
+  host                 User        @relation(fields: [hostId], references: [id])
+  categoryId           String?
+  category             Category?   @relation(fields: [categoryId], references: [id])
+  status               RoomStatus  @default(WAITING)
+  currentQuestionIndex Int         @default(0)
+  questionStartsAt     DateTime?
+  endsAt               DateTime?
+  createdAt            DateTime    @default(now())
+
+  participants CompetitionParticipant[]
+  roomQuestions        CompetitionRoomQuestion[]
+
+  @@index([code])
+  @@index([status])
+}
+
+model CompetitionParticipant {
+  id           String   @id @default(uuid())
+  roomId       String
+  room         CompetitionRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  score        Int      @default(0)
+  answersCount Int      @default(0)
+  correctCount Int      @default(0)
+  joinedAt     DateTime @default(now())
+  isHost       Boolean  @default(false)
+
+  @@index([roomId])
+  @@index([userId])
+}
+
+model CompetitionRoomQuestion {
+  id        String   @id @default(uuid())
+  roomId    String
+  room      CompetitionRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  questionId String
+  question  Question @relation(fields: [questionId], references: [id])
+  order     Int      @default(0)
+
+  @@unique([roomId, questionId])
+  @@index([roomId])
+}
+
+model QuestionReview {
+  id        String   @id @default(uuid())
+  questionId String
+  question  Question @relation(fields: [questionId], references: [id])
+  reviewerId String?
+  reviewer   User?    @relation(fields: [reviewerId], references: [id])
+  status     QuestionStatus
+  comment    String?
+  reviewedAt DateTime @default(now())
+
+  @@index([questionId])
+  @@index([status])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  String?
+  details   Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}

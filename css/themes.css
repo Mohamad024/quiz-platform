@@ -1,0 +1,6 @@
+:root[data-theme="light"] { --bg: #f8fafc; --card: #ffffff; --text: #0f172a; --muted: #64748b; --border: #e2e8f0; }
+:root[data-theme="dark"] { --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; --muted: #94a3b8; --border: #334155; }
+body { background: var(--bg); color: var(--text); }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 1rem; }
+input, button, select { color: var(--text); background: var(--card); border-color: var(--border); }
+::selection { background: #6366f1; color: #fff; }
