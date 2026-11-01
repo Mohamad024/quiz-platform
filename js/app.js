@@ -36,18 +36,24 @@ function setAllLangs(lang) {
 }
 
 async function init() {
-  const res = await StorageManager.initializeStorage();
-  console.log('Storage init:', res);
-  const issues = StorageManager.validateStoredData();
-  if (!issues.valid) console.warn('Storage issues:', issues.issues);
-  restoreSession();
-  applyTheme(state.theme);
-  applyLang(state.lang);
-  setupRouter();
-  setupThemeToggle();
-  setupLangToggle();
-  window.addEventListener('storage', () => restoreSession());
-  renderRoute();
+  try {
+    const res = await StorageManager.initializeStorage();
+    console.log('Storage init:', res);
+    const issues = StorageManager.validateStoredData();
+    if (!issues.valid) console.warn('Storage issues:', issues.issues);
+    restoreSession();
+    applyTheme(state.theme);
+    applyLang(state.lang);
+    setupRouter();
+    setupThemeToggle();
+    setupLangToggle();
+    window.addEventListener('storage', () => restoreSession());
+    renderRoute();
+  } catch (e) {
+    console.error('Init error:', e);
+    const out = document.getElementById('router-outlet');
+    if (out) out.innerHTML = `<div class="text-center py-20 text-red-600">حدث خطأ في التشغيل: ${e.message}</div>`;
+  }
 }
 
 function restoreSession() {

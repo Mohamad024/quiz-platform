@@ -25,5 +25,24 @@
   منصة مسابقات تفاعلية - تخزين محلي (LocalStorage) - غير آمن للإنتاج
 </footer>
 <script type="module" src="js/app.js"></script>
+<script>
+  // تحذير عند فتح الملف مباشرة بدون خادم
+  if (location.protocol === 'file:') {
+    const out = document.getElementById('router-outlet');
+    if (out) {
+      out.innerHTML = `
+        <div class="max-w-md mx-auto text-center py-20 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-6">
+          <h2 class="text-xl font-bold text-amber-800 dark:text-amber-400 mb-2">⚠️ يرجى استخدام خادم محلي</h2>
+          <p class="text-gray-600 dark:text-gray-300 mb-4">لا يمكن تشغيل JavaScript Modules عند فتح الملف مباشرة (file://).</p>
+          <div class="space-y-2 text-sm text-left">
+            <p class="bg-white dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-700"><strong>الخيار 1 (أنسب):</strong> شغّل الأمر في مجلد المشروع:<br><code class="block text-indigo-600 dark:text-indigo-400 mt-1">npx serve .</code><br>ثم افتح: <code>http://localhost:3000</code></p>
+            <p class="bg-white dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-700"><strong>الخيار 2:</strong> استخدم بايثون:<br><code class="block text-indigo-600 dark:text-indigo-400 mt-1">python -m http.server 8000</code><br>ثم افتح: <code>http://localhost:8000</code></p>
+          </div>
+          <p class="text-xs text-gray-500 mt-4">أو ارفع الملفات على GitHub فعّل GitHub Pages.</p>
+        </div>
+      `;
+    }
+  }
+</script>
 </body>
 </html>
